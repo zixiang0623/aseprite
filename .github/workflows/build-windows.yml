@@ -1,0 +1,91 @@
+name: Build Windows
+
+on:
+  # 手動実行。Actionsタブの "Run workflow" ボタンから起動します。
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-windows.yml'
+
+env:
+  # aseprite/aseprite の INSTALL.md に記載されている Skia のブランチ/リリースタグ。
+  # Aseprite本体を更新して手順が変わった場合はここも合わせて更新してください。
+  SKIA_RELEASE_TAG: m124-08a5439a6b
+  SKIA_ZIP_NAME: Skia-Windows-Release-x64.zip
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Aseprite (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # main ブランチの最新を対象にします
+          fetch-depth: 1
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
+
+      - name: Setup MSVC dev environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Cache Skia
+        id: cache-skia
+        uses: actions/cache@v4
+        with:
+          path: C:\deps\skia
+          key: skia-${{ env.SKIA_RELEASE_TAG }}-windows-x64
+
+      - name: Download prebuilt Skia
+        if: steps.cache-skia.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\deps\skia | Out-Null
+          $url = "https://github.com/aseprite/skia/releases/download/$env:SKIA_RELEASE_TAG/$env:SKIA_ZIP_NAME"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile C:\deps\skia.zip
+          Expand-Archive -Path C:\deps\skia.zip -DestinationPath C:\deps\skia -Force
+          Remove-Item C:\deps\skia.zip
+
+      - name: Configure (CMake)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          cmake `
+            -B build `
+            -S . `
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+            -DLAF_BACKEND=skia `
+            -DSKIA_DIR=C:\deps\skia `
+            -DSKIA_LIBRARY_DIR=C:\deps\skia\out\Release-x64 `
+            -DSKIA_LIBRARY=C:\deps\skia\out\Release-x64\skia.lib `
+            -DENABLE_OPENSSL=OFF `
+            -G Ninja
+
+      - name: Build
+        shell: pwsh
+        run: ninja aseprite
+        working-directory: build
+
+      - name: Package artifact
+        shell: pwsh
+        run: |
+          $dist = "dist\Aseprite"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          Copy-Item build\bin\aseprite.exe $dist\
+          Copy-Item build\bin\icudtl.dat $dist\
+          Copy-Item build\bin\data $dist\data -Recurse
+          Copy-Item EULA.txt $dist\ -ErrorAction SilentlyContinue
+          Compress-Archive -Path $dist\* -DestinationPath dist\Aseprite-windows-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aseprite-windows-x64
+          path: dist\Aseprite-windows-x64.zip
+          retention-days: 365
