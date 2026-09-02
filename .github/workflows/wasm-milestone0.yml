@@ -1,0 +1,67 @@
+# Milestone 0: laf-base / laf-gfx / laf-os(noneスタブ) が
+# Emscriptenでconfigure & buildできるかだけを確認するスモークテスト。
+# Skiaにはまだ触れない。ここが通らないと先に進む意味がないので最初のゲート。
+#
+# 使い方:
+#   1. aseprite本体のリポジトリ(laf をサブモジュールとして含む)にこのファイルを
+#      .github/workflows/wasm-milestone0.yml として置く
+#   2. laf/os/CMakeLists.txt に laf-os-emscripten-milestone0.patch を適用しておく
+#      (git submodule なら laf 側のフォークにコミットしてsubmodule参照を更新)
+#   3. push / workflow_dispatch で実行
+#
+# 未検証(このサンドボックスはネットワーク制限でemsdkのダウンロード元
+# storage.googleapis.com に到達できず、実際には一度も走らせていない)。
+# 初回はここで想定外のエラーが出る前提で見てください。
+
+name: wasm-milestone0
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'laf/**'
+      - '.github/workflows/wasm-milestone0.yml'
+
+jobs:
+  laf-base-gfx-os-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout aseprite (with laf submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Apply laf/os Emscripten branch patch
+        run: |
+          cd laf
+          git apply --check ../laf-os-emscripten-milestone0.patch || echo "already applied?"
+          git apply ../laf-os-emscripten-milestone0.patch || true
+
+      - name: Set up Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Configure laf (LAF_BACKEND=none, no Skia yet)
+        run: |
+          cd laf
+          mkdir build-wasm
+          cd build-wasm
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLAF_BACKEND=none \
+            -DLAF_WITH_TESTS=OFF \
+            -DLAF_WITH_EXAMPLES=OFF \
+            -DLAF_WITH_CLIP=OFF
+
+      - name: Build laf-base + laf-gfx + laf-os
+        run: |
+          cd laf/build-wasm
+          emmake cmake --build . --target laf-base laf-gfx laf-os -- -j"$(nproc)"
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-milestone0-build-dir
+          path: laf/build-wasm
