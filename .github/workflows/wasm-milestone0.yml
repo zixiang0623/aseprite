@@ -2,16 +2,9 @@
 # Emscriptenでconfigure & buildできるかだけを確認するスモークテスト。
 # Skiaにはまだ触れない。ここが通らないと先に進む意味がないので最初のゲート。
 #
-# 使い方:
-#   1. aseprite本体のリポジトリ(laf をサブモジュールとして含む)にこのファイルを
-#      .github/workflows/wasm-milestone0.yml として置く
-#   2. laf/os/CMakeLists.txt に laf-os-emscripten-milestone0.patch を適用しておく
-#      (git submodule なら laf 側のフォークにコミットしてsubmodule参照を更新)
-#   3. push / workflow_dispatch で実行
-#
-# 未検証(このサンドボックスはネットワーク制限でemsdkのダウンロード元
-# storage.googleapis.com に到達できず、実際には一度も走らせていない)。
-# 初回はここで想定外のエラーが出る前提で見てください。
+# laf/os の Emscripten対応パッチは submodule (zixiang0623/laf の
+# wasm-milestone0 ブランチ) 側に既に取り込み済みなので、ここでは
+# 適用不要。
 
 name: wasm-milestone0
 
@@ -19,30 +12,37 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'laf'
       - 'laf/**'
+      - 'third_party/pixman'
       - '.github/workflows/wasm-milestone0.yml'
 
 jobs:
   laf-base-gfx-os-smoke-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout aseprite (with laf submodule)
+      - name: Checkout aseprite (with laf + pixman submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Apply laf/os Emscripten branch patch
-        run: |
-          cd laf
-          git apply --check ../laf-os-emscripten-milestone0.patch || echo "already applied?"
-          git apply ../laf-os-emscripten-milestone0.patch || true
 
       - name: Set up Emscripten SDK
         uses: mymindstorm/setup-emsdk@v14
         with:
           version: latest
 
-      - name: Configure laf (LAF_BACKEND=none, no Skia yet)
+      - name: Build Pixman for wasm
+        run: |
+          set -e
+          cd third_party/pixman
+          emconfigure ./autogen.sh \
+            --disable-shared --enable-static \
+            --disable-gtk --disable-libpng --disable-openmp
+          emmake make -j"$(nproc)"
+          echo "PIXMAN_LIB=$(pwd)/pixman/.libs/libpixman-1.a" >> "$GITHUB_ENV"
+          echo "PIXMAN_INC=$(pwd)/pixman" >> "$GITHUB_ENV"
+
+      - name: Configure laf (LAF_BACKEND=none, Pixman for gfx::Region, no Skia yet)
         run: |
           cd laf
           mkdir build-wasm
@@ -52,7 +52,9 @@ jobs:
             -DLAF_BACKEND=none \
             -DLAF_WITH_TESTS=OFF \
             -DLAF_WITH_EXAMPLES=OFF \
-            -DLAF_WITH_CLIP=OFF
+            -DLAF_WITH_CLIP=OFF \
+            -DPIXMAN_LIBRARY="${PIXMAN_LIB}" \
+            -DPIXMAN_INCLUDE_DIR="${PIXMAN_INC}"
 
       - name: Build laf-base + laf-gfx + laf-os
         run: |
