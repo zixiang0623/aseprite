@@ -56,11 +56,11 @@ jobs:
             -DPIXMAN_LIBRARY="${PIXMAN_LIB}" \
             -DPIXMAN_INCLUDE_DIR="${PIXMAN_INC}"
 
-      - name: Build laf-base + laf-gfx + laf-os
+      - name: Build laf-base + laf-gfx + laf-os + smoketest
         run: |
           cd laf/build-wasm
           set -o pipefail
-          emmake cmake --build . --target laf-base laf-gfx laf-os -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
+          emmake cmake --build . --target laf-base laf-gfx laf-os laf-wasm-smoketest -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
 
       - name: Surface errors as annotations
         if: failure()
