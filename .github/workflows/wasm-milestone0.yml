@@ -57,11 +57,19 @@ jobs:
       - name: Build laf-base + laf-gfx + laf-os
         run: |
           cd laf/build-wasm
-          emmake cmake --build . --target laf-base laf-gfx laf-os -- -j"$(nproc)"
+          set -o pipefail
+          emmake cmake --build . --target laf-base laf-gfx laf-os -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
+
+      - name: Surface errors as annotations
+        if: failure()
+        run: |
+          grep -iE "error|undefined reference|fatal" /tmp/build.log | head -50 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
 
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: wasm-milestone0-build-dir
-          path: laf/build-wasm
+          name: wasm-milestone0-build-log
+          path: /tmp/build.log
