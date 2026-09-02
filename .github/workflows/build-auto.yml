@@ -1,12 +1,6 @@
 name: build-auto
 on:
-  push:
-    paths:
-    - '.github/workflows/build-auto.yml'
-    - 'build.cmd'
-    - 'build.ps1'
-    - 'build.sh'
-    - 'laf'
+  workflow_dispatch:
 jobs:
   build-auto:
     runs-on: ${{ matrix.os }}
