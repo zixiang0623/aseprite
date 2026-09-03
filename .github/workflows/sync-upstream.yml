@@ -21,7 +21,7 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@://github.com"
           
           # 本家Asepriteリポジトリを登録して最新情報を取得
-          git remote add upstream https://github.com
+          git remote add upstream https://github.com/aseprite/aseprite.git
           git fetch upstream main
           
           # 本家のmainブランチの変更を、自分のmainブランチにマージ
