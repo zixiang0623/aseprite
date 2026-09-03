@@ -1,0 +1,31 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 毎日日本時間の午前9時に自動実行
+  workflow_dispatch: # いつでも手動で実行できるボタンを出す
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync with Upstream
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@://github.com"
+          
+          # 本家Asepriteリポジトリを登録して最新情報を取得
+          git remote add upstream https://github.com
+          git fetch upstream main
+          
+          # 本家のmainブランチの変更を、自分のmainブランチにマージ
+          git merge upstream/main --no-edit
+          
+          # 更新があれば自分のGitHubへプッシュ
+          git push origin main
