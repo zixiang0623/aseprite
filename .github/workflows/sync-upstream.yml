@@ -1,0 +1,69 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # 毎日UTC 0時に実行
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/aseprite/aseprite.git
+          git remote -v
+
+      - name: Fetch upstream main
+        run: |
+          git fetch upstream main
+
+      - name: Check for differences
+        id: check
+        run: |
+          if git diff --quiet main upstream/main; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✅ No changes to sync"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "📝 Changes detected, syncing..."
+          fi
+
+      - name: Merge upstream/main into main
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          git checkout main
+          git merge -X ours upstream/main --no-edit
+
+      - name: Update submodules
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          git submodule update --remote --recursive
+
+      - name: Push to fork
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          git push origin main
+
+      - name: Create summary
+        run: |
+          echo "## Sync Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source**: aseprite/aseprite (main)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target**: zixiang0623/aseprite (main)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes**: ${{ steps.check.outputs.has_changes }}" >> $GITHUB_STEP_SUMMARY
