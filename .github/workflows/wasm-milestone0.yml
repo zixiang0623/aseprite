@@ -62,15 +62,19 @@ jobs:
           set -o pipefail
           emmake cmake --build . --target laf-base laf-gfx laf-os laf-wasm-smoketest -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
 
+      - name: List smoketest build output
+        run: |
+          find laf/build-wasm/os -maxdepth 1 -iname "laf-wasm-smoketest*" | while read -r f; do
+            echo "::notice::found: $f ($(stat -c%s "$f") bytes)"
+          done
+
       - name: Upload smoketest (html/js/wasm) for manual verification
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: laf-wasm-smoketest
-          path: |
-            laf/build-wasm/os/laf-wasm-smoketest.html
-            laf/build-wasm/os/laf-wasm-smoketest.js
-            laf/build-wasm/os/laf-wasm-smoketest.wasm
+          path: laf/build-wasm/os/laf-wasm-smoketest*
+          if-no-files-found: warn
 
       - name: Surface errors as annotations
         if: failure()
