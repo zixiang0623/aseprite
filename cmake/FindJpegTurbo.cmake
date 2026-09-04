@@ -35,6 +35,10 @@ else()
     BUILD_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/${CMAKE_STATIC_LIBRARY_PREFIX}jpeg${LIBJPEG_TURBO_STATIC_SUFFIX}${CMAKE_STATIC_LIBRARY_SUFFIX}"
     DOWNLOAD_EXTRACT_TIMESTAMP ON
     CMAKE_CACHE_ARGS
+    # Forward the toolchain file so this nested configure targets
+    # the same platform as the outer build (e.g. Emscripten) instead
+    # of defaulting to the host's native compiler/pointer size.
+    -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${CMAKE_TOOLCHAIN_FILE}
     -DENABLE_SHARED:BOOL=OFF
     -DENABLE_STATIC:BOOL=ON
     -DWITH_ARITH_DEC:BOOL=ON
