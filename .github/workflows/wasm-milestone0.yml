@@ -107,3 +107,78 @@ jobs:
         with:
           name: wasm-milestone0-build-log
           path: /tmp/build.log
+
+  # Milestone 5: does Aseprite's own top-level CMakeLists.txt even
+  # configure under Emscripten? This is a much bigger dependency
+  # graph than laf alone (zlib/libpng/giflib/tinyxml2/TinyEXIF/
+  # simpleini/fmt/cmark/json11/libarchive + all of src/), so this
+  # job is expected to take a few iterations to go green. curl is
+  # avoided entirely (ENABLE_NEWS/UPDATER/DRM=OFF => REQUIRE_CURL
+  # stays OFF), webp/scripting/tests are deferred to shrink the
+  # first attempt's surface area. Not building the aseprite exe
+  # target yet -- just trying to get everything up to src/ to
+  # configure and compile.
+  aseprite-emscripten-configure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout aseprite (all submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Configure Aseprite for wasm
+        run: |
+          mkdir build-wasm
+          cd build-wasm
+          emcmake cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLAF_BACKEND=none \
+            -DLAF_WITH_TESTS=OFF \
+            -DLAF_WITH_EXAMPLES=OFF \
+            -DLAF_WITH_CLIP=OFF \
+            -DENABLE_NEWS=OFF \
+            -DENABLE_UPDATER=OFF \
+            -DENABLE_DRM=OFF \
+            -DENABLE_WEBP=OFF \
+            -DENABLE_SCRIPTING=OFF \
+            -DENABLE_TESTS=OFF \
+            -DENABLE_BENCHMARKS=OFF \
+            -DENABLE_ASEPRITE_EXE=OFF \
+            -DENABLE_CCACHE=OFF \
+            2>&1 | tee /tmp/configure.log
+
+      - name: Try building app-lib (the big one -- pulls in most of src/)
+        if: success()
+        run: |
+          cd build-wasm
+          set -o pipefail
+          emmake cmake --build . --target app-lib -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
+
+      - name: Surface configure errors as annotations
+        if: failure()
+        run: |
+          grep -iE "error|not found|could not|fatal" /tmp/configure.log 2>/dev/null | head -80 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+
+      - name: Surface build errors as annotations
+        if: failure()
+        run: |
+          grep -iE "error|undefined reference|fatal" /tmp/build.log 2>/dev/null | head -80 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aseprite-emscripten-configure-logs
+          path: |
+            /tmp/configure.log
+            /tmp/build.log
+          if-no-files-found: warn
