@@ -131,6 +131,42 @@ jobs:
         with:
           version: latest
 
+      - name: Install native deps (for the host 'gen' tool's configure pass)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            libpixman-1-dev libfreetype6-dev libharfbuzz-dev zlib1g-dev \
+            libx11-dev libxcursor-dev libxi-dev libxrandr-dev libgl1-mesa-dev \
+            libfontconfig1-dev
+
+      - name: Build native 'gen' tool
+        # gen (src/gen) only needs laf-base + cfg-lib + tinyxml2 --
+        # no laf-os/gfx/text -- but CMake still configures the whole
+        # tree first, so this needs a real native toolchain present.
+        # It has to be a native binary since it runs *during* the
+        # wasm build (to turn data/*.xml into generated headers);
+        # a wasm build of it wouldn't be directly executable here.
+        run: |
+          mkdir build-host-tools
+          cd build-host-tools
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLAF_BACKEND=none \
+            -DLAF_WITH_TESTS=OFF \
+            -DLAF_WITH_EXAMPLES=OFF \
+            -DLAF_WITH_CLIP=OFF \
+            -DENABLE_NEWS=OFF \
+            -DENABLE_UPDATER=OFF \
+            -DENABLE_DRM=OFF \
+            -DENABLE_WEBP=OFF \
+            -DENABLE_SCRIPTING=OFF \
+            -DENABLE_TESTS=OFF \
+            -DENABLE_BENCHMARKS=OFF \
+            -DENABLE_ASEPRITE_EXE=OFF \
+            -DENABLE_CCACHE=OFF
+          cmake --build . --target gen -- -j"$(nproc)"
+          echo "GEN_EXE_PATH=$(pwd)/bin/gen" >> "$GITHUB_ENV"
+
       - name: Configure Aseprite for wasm
         run: |
           mkdir build-wasm
@@ -150,6 +186,7 @@ jobs:
             -DENABLE_BENCHMARKS=OFF \
             -DENABLE_ASEPRITE_EXE=OFF \
             -DENABLE_CCACHE=OFF \
+            -DGEN_EXE="${GEN_EXE_PATH}" \
             2>&1 | tee /tmp/configure.log
 
       - name: Try building app-lib (the big one -- pulls in most of src/)
