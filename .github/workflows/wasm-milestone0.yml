@@ -184,17 +184,17 @@ jobs:
             -DENABLE_SCRIPTING=OFF \
             -DENABLE_TESTS=OFF \
             -DENABLE_BENCHMARKS=OFF \
-            -DENABLE_ASEPRITE_EXE=OFF \
+            -DENABLE_ASEPRITE_EXE=ON \
             -DENABLE_CCACHE=OFF \
             -DGEN_EXE="${GEN_EXE_PATH}" \
             2>&1 | tee /tmp/configure.log
 
-      - name: Try building app-lib (the big one -- pulls in most of src/)
+      - name: Try building the aseprite executable
         if: success()
         run: |
           cd build-wasm
           set -o pipefail
-          emmake cmake --build . --target app-lib -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
+          emmake cmake --build . --target aseprite -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
 
       - name: Surface configure errors as annotations
         if: failure()

@@ -46,6 +46,10 @@
 #include <utility>
 #include <vector>
 
+#if LAF_WASM
+  #include <emscripten.h>
+#endif
+
 namespace ui {
 
 namespace {
@@ -300,8 +304,17 @@ void Manager::run()
     set_mouse_cursor(kArrowCursor);
   }
 
-  while (!children().empty())
+  while (!children().empty()) {
     loop.pumpMessages();
+#if LAF_WASM
+    // Manager::run()'s loop is a genuine blocking loop; under
+    // Emscripten we build with -sASYNCIFY=1 (see os/CMakeLists.txt)
+    // so a yield point like this lets the browser's own event loop
+    // and rendering get a turn each iteration, instead of freezing
+    // the tab.
+    emscripten_sleep(0);
+#endif
+  }
 }
 
 void Manager::flipAllDisplays()
