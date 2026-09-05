@@ -71,9 +71,11 @@ void custom_error_handler(clip::ErrorCode code)
     case clip::ErrorCode::CannotLock:
       ui::Alert::show(Strings::alerts_clipboard_access_locked());
       break;
+#if CLIP_ENABLE_IMAGE
     case clip::ErrorCode::ImageNotSupported:
       ui::Alert::show(Strings::alerts_clipboard_image_format_not_supported());
       break;
+#endif
   }
 }
 
@@ -93,8 +95,12 @@ void Clipboard::registerNativeFormats()
 
 bool Clipboard::hasNativeBitmap() const
 {
+#if CLIP_ENABLE_IMAGE
   InhibitClipErrors ice;
   return clip::has(clip::image_format());
+#else
+  return false;
+#endif
 }
 
 bool Clipboard::setNativeBitmap(const doc::Image* image,
@@ -103,6 +109,7 @@ bool Clipboard::setNativeBitmap(const doc::Image* image,
                                 const doc::Tileset* tileset,
                                 const doc::color_t indexMaskColor)
 {
+#if CLIP_ENABLE_IMAGE
   clip::lock l(native_window_handle());
   if (!l.locked())
     return false;
@@ -202,10 +209,19 @@ bool Clipboard::setNativeBitmap(const doc::Image* image,
   }
 
   return true;
+#else
+  (void)image;
+  (void)mask;
+  (void)palette;
+  (void)tileset;
+  (void)indexMaskColor;
+  return false;
+#endif
 }
 
 bool Clipboard::getNativeBitmap(NativeData& data)
 {
+#if CLIP_ENABLE_IMAGE
   clip::lock l(native_window_handle());
   if (!l.locked())
     return false;
@@ -316,10 +332,15 @@ bool Clipboard::getNativeBitmap(NativeData& data)
 
   data.image = std::move(dst);
   return true;
+#else
+  (void)data;
+  return false;
+#endif
 }
 
 bool Clipboard::getNativeBitmapSize(gfx::Size* size)
 {
+#if CLIP_ENABLE_IMAGE
   // Don't show errors when we are trying to get the size of the image
   // only. (E.g. don't show "invalid image format error")
   InhibitClipErrors inhibitErrors;
@@ -332,6 +353,10 @@ bool Clipboard::getNativeBitmapSize(gfx::Size* size)
   }
   else
     return false;
+#else
+  (void)size;
+  return false;
+#endif
 }
 
 bool Clipboard::setNativePalette(const doc::Palette* palette, const doc::PalettePicks& picks)
