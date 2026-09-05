@@ -52,7 +52,7 @@ jobs:
             -DLAF_BACKEND=none \
             -DLAF_WITH_TESTS=OFF \
             -DLAF_WITH_EXAMPLES=OFF \
-            -DLAF_WITH_CLIP=OFF \
+            -DLAF_WITH_CLIP=ON \
             -DPIXMAN_LIBRARY="${PIXMAN_LIB}" \
             -DPIXMAN_INCLUDE_DIR="${PIXMAN_INC}"
 
@@ -154,7 +154,7 @@ jobs:
             -DLAF_BACKEND=none \
             -DLAF_WITH_TESTS=OFF \
             -DLAF_WITH_EXAMPLES=OFF \
-            -DLAF_WITH_CLIP=OFF \
+            -DLAF_WITH_CLIP=ON \
             -DENABLE_NEWS=OFF \
             -DENABLE_UPDATER=OFF \
             -DENABLE_DRM=OFF \
@@ -176,7 +176,7 @@ jobs:
             -DLAF_BACKEND=none \
             -DLAF_WITH_TESTS=OFF \
             -DLAF_WITH_EXAMPLES=OFF \
-            -DLAF_WITH_CLIP=OFF \
+            -DLAF_WITH_CLIP=ON \
             -DENABLE_NEWS=OFF \
             -DENABLE_UPDATER=OFF \
             -DENABLE_DRM=OFF \
