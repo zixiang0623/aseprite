@@ -49,7 +49,7 @@ std::string getFullOSString()
 
   os << "macOS " << p.osVer.major() << "." << p.osVer.minor() << "." << p.osVer.patch();
 
-#else
+#elif LAF_LINUX
 
   // ----------------------------------------------------------------------
   // Unix like
