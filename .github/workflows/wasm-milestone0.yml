@@ -187,6 +187,7 @@ jobs:
             -DENABLE_ASEPRITE_EXE=ON \
             -DENABLE_CCACHE=OFF \
             -DGEN_EXE="${GEN_EXE_PATH}" \
+            -DLAF_BACKEND_LINK_FLAGS="-sUSE_SDL=2 -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 -sASYNCIFY=1 -sSINGLE_FILE=1" \
             2>&1 | tee /tmp/configure.log
 
       - name: Try building the aseprite executable
@@ -195,6 +196,40 @@ jobs:
           cd build-wasm
           set -o pipefail
           emmake cmake --build . --target aseprite -- -j"$(nproc)" 2>&1 | tee /tmp/build.log
+
+      - name: List aseprite build output
+        if: success()
+        run: |
+          find build-wasm/bin -maxdepth 1 -iname "aseprite*" | while read -r f; do
+            echo "::notice::found: $f ($(stat -c%s "$f") bytes)"
+          done
+
+      - name: Write a minimal HTML shell
+        if: success()
+        run: |
+          cat > build-wasm/bin/index.html <<'EOF'
+          <!doctype html>
+          <html>
+          <head><meta charset="utf-8"><title>Aseprite wasm milestone 6</title></head>
+          <body style="margin:0">
+            <canvas id="canvas" width="960" height="640"></canvas>
+            <script>
+              var Module = { canvas: document.getElementById('canvas') };
+            </script>
+            <script src="aseprite.js"></script>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload aseprite (html/js, SINGLE_FILE=1) for manual verification
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aseprite-wasm
+          path: |
+            build-wasm/bin/index.html
+            build-wasm/bin/aseprite*
+          if-no-files-found: warn
 
       - name: Surface configure errors as annotations
         if: failure()
