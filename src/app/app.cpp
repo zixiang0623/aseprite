@@ -341,8 +341,17 @@ int App::initialize(const AppOptions& options)
   m_brushes = std::make_unique<AppBrushes>();
 
   // Data recovery is enabled only in GUI mode
+#if !LAF_WASM
+  // Milestone 6: DataRecovery/BackupObserver spawns a real
+  // std::thread in its constructor, which aborts under Emscripten's
+  // default single-threaded build (no -pthread/-sUSE_PTHREADS=1 --
+  // and that needs a cross-origin-isolated context, which the whole
+  // point of this port -- working from file:// with no server --
+  // can't provide anyway). Skipping crash recovery for now; m_recovery
+  // just stays null, same as before this line would have run.
   if (isGui() && pref.general.dataRecovery())
     m_modules->createDataRecovery(context());
+#endif
 
   if (isPortable())
     LOG("APP: Running in portable mode\n");
@@ -374,8 +383,10 @@ int App::initialize(const AppOptions& options)
       m_mod->modMainWindow(m_mainWindow.get());
 
     // Data recovery is enabled only in GUI mode
+#if !LAF_WASM
     if (pref.general.dataRecovery())
       m_modules->searchDataRecoverySessions();
+#endif
 
     // Default status of the main window.
     app_rebuild_documents_tabs();
