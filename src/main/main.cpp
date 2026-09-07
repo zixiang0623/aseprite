@@ -15,6 +15,7 @@
 #include "app/resource_finder.h"
 #include "app/send_crash.h"
 #include "base/exception.h"
+#include "base/log.h"
 #include "base/memory.h"
 #include "base/system_console.h"
 #include "base/thread.h"
@@ -95,6 +96,16 @@ int app_main(int argc, char* argv[])
 
   // Initialize the random seed.
   std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+#if LAF_WASM
+  // Milestone 6 debug: default log level is ERROR, which hides
+  // ResourceFinder's per-candidate-path "FIND:" trace (logged at
+  // INFO). Bump to VERBOSE so a failure like "gui.xml was not
+  // found" shows exactly which paths were tried and why none
+  // matched -- there's no argv-driven --verbose flag reaching us
+  // in the browser to turn this on any other way.
+  base::set_log_level(VERBOSE);
+#endif
 
 #if LAF_WINDOWS
   base::CoInit com; // To create COM objects
