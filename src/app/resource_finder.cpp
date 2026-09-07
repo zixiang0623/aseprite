@@ -100,6 +100,17 @@ void ResourceFinder::includeDataDir(const char* filename)
   std::snprintf(buf, sizeof(buf), "../Resources/data/%s", filename);
   includeBinDir(buf); // $BINDIR/../Resources/data/filename (inside a bundle)
 
+#elif LAF_WASM
+
+  // Milestone 6: the generic POSIX fallback below relies on
+  // get_app_path() (readlink("/proc/self/exe")) and $HOME, neither
+  // of which exist under Emscripten. The data/ directory is embedded
+  // directly at the virtual filesystem root via
+  // `--embed-file ${SOURCE_DATA_DIR}@data` (see src/CMakeLists.txt),
+  // so it's always simply /data/filename -- no search needed.
+  std::snprintf(buf, sizeof(buf), "/data/%s", filename);
+  addPath(buf);
+
 #else
 
   // $HOME/.config/aseprite/filename
