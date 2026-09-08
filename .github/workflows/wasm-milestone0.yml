@@ -205,6 +205,28 @@ jobs:
             echo "::notice::found: $f ($(stat -c%s "$f") bytes)"
           done
 
+      - name: Verify data/ was actually embedded into aseprite.js
+        if: success()
+        run: |
+          JS=build-wasm/bin/aseprite.js
+          echo "aseprite.js size: $(stat -c%s "$JS") bytes"
+          echo "--- occurrences of 'gui.xml' ---"
+          grep -o 'gui\.xml' "$JS" | wc -l
+          echo "--- occurrences of '/data' ---"
+          grep -o '/data' "$JS" | wc -l
+          echo "--- occurrences of 'FS_createPath\|createPreloadedFile\|createDataFile' ---"
+          grep -oE 'FS_createPath|createPreloadedFile|createDataFile' "$JS" | sort | uniq -c
+          echo "--- first match context for gui.xml (200 chars around) ---"
+          grep -ob 'gui\.xml' "$JS" | head -3 | while IFS=: read -r off _; do
+            start=$(( off > 100 ? off - 100 : 0 ))
+            dd if="$JS" bs=1 skip="$start" count=300 2>/dev/null | tr -d '\0'
+            echo
+            echo "===="
+          done
+          if ! grep -q 'gui\.xml' "$JS"; then
+            echo "::error::gui.xml string not found anywhere in aseprite.js -- data/ was not embedded as expected"
+          fi
+
       - name: Write a minimal HTML shell
         if: success()
         run: |
