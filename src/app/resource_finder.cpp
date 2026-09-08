@@ -73,6 +73,11 @@ bool ResourceFinder::findFirst()
 
 void ResourceFinder::addPath(const std::string& path)
 {
+  // TODO(milestone6-debug): remove once gui.xml resolution under
+  // LAF_WASM is confirmed working. LOG() honors the app log level,
+  // but this bypasses it entirely to nail down exactly which
+  // candidate paths includeDataDir() is producing at runtime.
+  std::fprintf(stderr, "ADDPATH: \"%s\"\n", path.c_str());
   m_paths.push_back(path);
 }
 
