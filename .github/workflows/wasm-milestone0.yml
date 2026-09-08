@@ -216,12 +216,22 @@ jobs:
           echo "::notice::occurrences of '/data': $DATA_COUNT"
           CREATE_CALLS=$(grep -oE 'FS_createPath|createPreloadedFile|createDataFile' "$JS" | sort | uniq -c | tr '\n' ';')
           echo "::notice::FS create call counts: $CREATE_CALLS"
-          OFF=$(grep -ob 'gui\.xml' "$JS" | head -1 | cut -d: -f1)
-          if [ -n "$OFF" ]; then
-            START=$(( OFF > 150 ? OFF - 150 : 0 ))
-            CTX=$(dd if="$JS" bs=1 skip="$START" count=400 2>/dev/null | tr -d '\0' | tr '\n' ' ')
-            echo "::notice::context around first gui.xml match: $CTX"
+
+          LINKTXT=$(find build-wasm -name "link.txt" -path "*aseprite.dir*" | head -1)
+          echo "::notice::link.txt path: $LINKTXT"
+          if [ -n "$LINKTXT" ]; then
+            EMBED_COUNT=$(grep -c -- "--embed-file" "$LINKTXT" || true)
+            echo "::notice::--embed-file occurrences in link.txt: $EMBED_COUNT"
+            SNIPPET=$(grep -o -- "--embed-file[^ ]*" "$LINKTXT" | head -3 | tr '\n' '|')
+            echo "::notice::--embed-file argument(s) in link.txt: $SNIPPET"
+            DISABLE_EXC=$(grep -c -- "DISABLE_EXCEPTION_CATCHING" "$LINKTXT" || true)
+            echo "::notice::DISABLE_EXCEPTION_CATCHING occurrences in link.txt (sanity check): $DISABLE_EXC"
           else
+            echo "::error::could not locate aseprite.dir/link.txt to inspect the real link command"
+          fi
+
+          OFF=$(grep -ob 'gui\.xml' "$JS" | head -1 | cut -d: -f1)
+          if [ -z "$OFF" ]; then
             echo "::error::gui.xml string not found anywhere in aseprite.js -- data/ was not embedded as expected"
           fi
 
