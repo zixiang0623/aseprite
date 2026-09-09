@@ -253,7 +253,16 @@ int App::initialize(const AppOptions& options)
 
   // Without Skia backend we don't have GUI.
   const bool startGui = (options.startUI() && !options.previewCLI());
-#if LAF_SKIA
+#if LAF_SKIA || LAF_WASM
+  // Milestone 7: upstream only enables the GUI path with the Skia
+  // backend, but by this point the Emscripten "none" backend already
+  // has its own SDL2 event handling, PNG decoding, and sprite-sheet
+  // font rendering (Milestones 2-4) -- enough of a minimal software
+  // rasterizer that it's worth trying the real GUI path here instead
+  // of assuming it's Skia-or-nothing. If the software Surface/Graphics
+  // implementation turns out to be too incomplete for widget
+  // rendering, we'll see it crash/misrender rather than just silently
+  // never showing a window, which is what happened before this.
   m_isGui = startGui;
 #else
   // True if we should show a warning when running the main Aseprite
