@@ -13,6 +13,7 @@
 
 #include "app/app.h"
 #include "app/app_menus.h"
+#include "base/log.h"
 #include "app/commands/command.h"
 #include "app/commands/commands.h"
 #include "app/crash/data_recovery.h"
@@ -189,7 +190,9 @@ void MainWindow::initialize()
   pref.general.showMenuBar.AfterChange.connect([this] { configureWorkspaceLayout(); });
 
   // Prepare the window
+  LOG("MAINWINDOW: about to remapWindow()\n");
   remapWindow();
+  LOG("MAINWINDOW: remapWindow() OK\n");
 
   AppMenus::instance()->rebuildRecentList();
 
@@ -197,7 +200,9 @@ void MainWindow::initialize()
   // relayout the whole main window.
   Strings::instance()->LanguageChange.connect([this] { onLanguageChange(); });
 
+  LOG("MAINWINDOW: about to initTheme()\n");
   initTheme();
+  LOG("MAINWINDOW: initTheme() OK, initialize() complete\n");
 }
 
 MainWindow::~MainWindow()

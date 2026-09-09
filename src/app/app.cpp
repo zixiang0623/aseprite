@@ -387,7 +387,9 @@ int App::initialize(const AppOptions& options)
 
     // Create the main window.
     m_mainWindow.reset(new MainWindow);
+    LOG("APP: new MainWindow OK, about to initialize()\n");
     m_mainWindow->initialize();
+    LOG("APP: MainWindow::initialize() OK\n");
     if (m_mod)
       m_mod->modMainWindow(m_mainWindow.get());
 
@@ -403,6 +405,7 @@ int App::initialize(const AppOptions& options)
 
     // Show the main window (this is not modal, the code continues)
     m_mainWindow->openWindow();
+    LOG("APP: openWindow() OK\n");
 
 #if LAF_LINUX // TODO check why this is required and we cannot call
               //      updateAllDisplays() on Linux/X11
@@ -496,6 +499,7 @@ struct DeleteAllDocs {
 
 void App::run(const bool runGuiManager)
 {
+  LOG("APP: run() entered\n");
   CloseMainWindow closeMainWindow(m_mainWindow);
   DeleteAllDocs deleteAllDocsAtExit(context());
 
@@ -582,6 +586,7 @@ void App::run(const bool runGuiManager)
 
     // Run the GUI main message loop
     if (runGuiManager) {
+      LOG("APP: about to call manager->run()\n");
       try {
         manager->run();
         set_app_state(AppState::kClosing);
