@@ -204,16 +204,6 @@ if(ENABLE_ASEPRITE_EXE)
     endif()
   endif()
   set_target_properties(aseprite PROPERTIES LINK_FLAGS "${LAF_BACKEND_LINK_FLAGS}")
-  if(EMSCRIPTEN)
-    # Milestone 6: bundle data/ (skins, palettes, extensions,
-    # fonts, translations) straight into the JS so App::initialize()
-    # can find everything with no server and no runtime fetch. Only
-    # ~1.4MB uncompressed -- fine to embed outright for now; a real
-    # deployment would likely switch to --preload-file (served over
-    # HTTP, browser-cacheable) instead once this actually works.
-    set_target_properties(aseprite PROPERTIES
-      LINK_FLAGS "${LAF_BACKEND_LINK_FLAGS} --embed-file ${SOURCE_DATA_DIR}@data")
-  endif()
   if(APPLE)
     set_target_properties(aseprite PROPERTIES
       MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/main/osx/Info.plist")
@@ -241,6 +231,24 @@ if(ENABLE_ASEPRITE_EXE)
   if(LAF_BACKEND_LINK_FLAGS)
     set_target_properties(aseprite PROPERTIES LINK_FLAGS
       ${LAF_BACKEND_LINK_FLAGS})
+  endif()
+
+  if(EMSCRIPTEN)
+    # Milestone 6: bundle data/ (skins, palettes, extensions,
+    # fonts, translations) straight into the JS so App::initialize()
+    # can find everything with no server and no runtime fetch. Only
+    # ~1.4MB uncompressed -- fine to embed outright for now; a real
+    # deployment would likely switch to --preload-file (served over
+    # HTTP, browser-cacheable) instead once this actually works.
+    #
+    # NOTE: this must come after the unconditional
+    # "if(LAF_BACKEND_LINK_FLAGS) set_target_properties(... LINK_FLAGS
+    # ${LAF_BACKEND_LINK_FLAGS})" above, which otherwise clobbers
+    # LINK_FLAGS wholesale (set_target_properties overwrites, it
+    # doesn't append) and silently drops --embed-file entirely.
+    get_target_property(_aseprite_link_flags aseprite LINK_FLAGS)
+    set_target_properties(aseprite PROPERTIES
+      LINK_FLAGS "${_aseprite_link_flags} --embed-file ${SOURCE_DATA_DIR}@data")
   endif()
 
   install(TARGETS aseprite
