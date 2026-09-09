@@ -212,23 +212,25 @@ jobs:
           echo "::notice::aseprite.js size: $(stat -c%s "$JS") bytes"
           GUI_COUNT=$(grep -o 'gui\.xml' "$JS" | wc -l)
           DATA_COUNT=$(grep -o '/data' "$JS" | wc -l)
+          DATA_NOSLASH_COUNT=$(grep -o 'data/gui' "$JS" | wc -l)
+          XML_COUNT=$(grep -o '\.xml' "$JS" | wc -l)
           echo "::notice::occurrences of 'gui.xml': $GUI_COUNT"
           echo "::notice::occurrences of '/data': $DATA_COUNT"
-          CREATE_CALLS=$(grep -oE 'FS_createPath|createPreloadedFile|createDataFile' "$JS" | sort | uniq -c | tr '\n' ';')
-          echo "::notice::FS create call counts: $CREATE_CALLS"
+          echo "::notice::occurrences of 'data/gui' (no leading slash): $DATA_NOSLASH_COUNT"
+          echo "::notice::occurrences of '.xml' (any): $XML_COUNT"
+          CREATE_CALLS=$(grep -oE 'FS_createPath|createPreloadedFile|createDataFile|preloadedFiles|preloadPlugins|PACKAGE_UUID|filePackagePrefixURL' "$JS" | sort | uniq -c | tr '\n' ';')
+          echo "::notice::FS/packager related token counts: $CREATE_CALLS"
 
           LINKTXT=$(find build-wasm -name "link.txt" -path "*aseprite.dir*" | head -1)
-          echo "::notice::link.txt path: $LINKTXT"
           if [ -n "$LINKTXT" ]; then
-            EMBED_COUNT=$(grep -c -- "--embed-file" "$LINKTXT" || true)
-            echo "::notice::--embed-file occurrences in link.txt: $EMBED_COUNT"
-            SNIPPET=$(grep -o -- "--embed-file[^ ]*" "$LINKTXT" | head -3 | tr '\n' '|')
-            echo "::notice::--embed-file argument(s) in link.txt: $SNIPPET"
-            DISABLE_EXC=$(grep -c -- "DISABLE_EXCEPTION_CATCHING" "$LINKTXT" || true)
-            echo "::notice::DISABLE_EXCEPTION_CATCHING occurrences in link.txt (sanity check): $DISABLE_EXC"
-          else
-            echo "::error::could not locate aseprite.dir/link.txt to inspect the real link command"
+            SNIPPET=$(grep -oE -- '--embed-file [^ ]+' "$LINKTXT" | head -3 | tr '\n' '|')
+            echo "::notice::--embed-file argument(s) in link.txt: [$SNIPPET]"
           fi
+
+          echo "::notice::--- build.log embed/packager related lines ---"
+          grep -iE "embed|packager|preload" /tmp/build.log 2>/dev/null | head -20 | while IFS= read -r line; do
+            echo "::warning::buildlog: ${line}"
+          done
 
           OFF=$(grep -ob 'gui\.xml' "$JS" | head -1 | cut -d: -f1)
           if [ -z "$OFF" ]; then
