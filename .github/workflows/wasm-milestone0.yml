@@ -210,16 +210,25 @@ jobs:
         run: |
           JS=build-wasm/bin/aseprite.js
           echo "::notice::aseprite.js size: $(stat -c%s "$JS") bytes"
+          echo "::notice::local data/ stats: $(du -sh data | cut -f1), $(find data -type f | wc -l) files"
+
           GUI_COUNT=$(grep -o 'gui\.xml' "$JS" | wc -l)
-          DATA_COUNT=$(grep -o '/data' "$JS" | wc -l)
-          DATA_NOSLASH_COUNT=$(grep -o 'data/gui' "$JS" | wc -l)
           XML_COUNT=$(grep -o '\.xml' "$JS" | wc -l)
-          echo "::notice::occurrences of 'gui.xml': $GUI_COUNT"
-          echo "::notice::occurrences of '/data': $DATA_COUNT"
-          echo "::notice::occurrences of 'data/gui' (no leading slash): $DATA_NOSLASH_COUNT"
-          echo "::notice::occurrences of '.xml' (any): $XML_COUNT"
+          echo "::notice::occurrences of 'gui.xml': $GUI_COUNT, '.xml' (any): $XML_COUNT"
+
           CREATE_CALLS=$(grep -oE 'FS_createPath|createPreloadedFile|createDataFile|preloadedFiles|preloadPlugins|PACKAGE_UUID|filePackagePrefixURL' "$JS" | sort | uniq -c | tr '\n' ';')
           echo "::notice::FS/packager related token counts: $CREATE_CALLS"
+
+          # Search for the *raw bytes* of gui.xml's header, in case it's
+          # embedded without a readable filename manifest.
+          B64=$(head -c 30 data/gui.xml | base64 | tr -d '\n')
+          B64_COUNT=$(grep -c -- "$B64" "$JS" || true)
+          echo "::notice::base64('<?xml version=\"1.0\" ...') ($B64) occurrences: $B64_COUNT"
+
+          # Same header as a JS decimal byte array, e.g. "60,63,120,109,108"
+          BYTES=$(head -c 12 data/gui.xml | od -An -tu1 | tr -s ' ' ',' | sed 's/^,//;s/,$//')
+          BYTES_COUNT=$(grep -c -- "$BYTES" "$JS" || true)
+          echo "::notice::decimal byte array ($BYTES) occurrences: $BYTES_COUNT"
 
           LINKTXT=$(find build-wasm -name "link.txt" -path "*aseprite.dir*" | head -1)
           if [ -n "$LINKTXT" ]; then
